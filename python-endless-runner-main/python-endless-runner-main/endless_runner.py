@@ -48,6 +48,11 @@ HEALTH_POS_TOP_MARGIN = 10
 HEALTH_HEART_SPACING = 5
 HEART_ANIMATION_SPEED = 0.1
 
+# File Paths (using os.path.join for compatibility)
+IMAGE_DIR = 'images'
+SOUND_DIR = 'sounds' # <--- ADD THIS
+BG_DIR = os.path.join(IMAGE_DIR, 'bg')
+
 BOX_PADDING_X = 30 # Horizontal padding inside the box
 BOX_PADDING_Y = 20 # Vertical padding inside the box
 BUTTON_SPACING_Y = 10 # Vertical space between buttons
@@ -80,6 +85,15 @@ game = pygame.display.set_mode(SIZE)
 pygame.display.set_caption('Endless Runner')
 clock = pygame.time.Clock()
 
+# --- ADD MIXER INITIALIZATION ---
+try:
+    pygame.mixer.init() # Initialize the mixer
+    print("Mixer initialized successfully.")
+except pygame.error as e:
+    print(f"Error initializing mixer: {e}. Audio may not work.")
+    # Optionally disable audio features if init fails
+# --- END ADDITION ---
+
 # --- Font Loading ---
 # It's good practice to check if font loading succeeds
 try:
@@ -93,6 +107,17 @@ except pygame.error as e:
     button_font = pygame.font.SysFont(None, BUTTON_FONT_SIZE)
     score_font = pygame.font.SysFont(None, SCORE_FONT_SIZE)
 
+# --- ADD MUSIC LOADING ---
+try:
+    music_path = os.path.join(SOUND_DIR, 'Soundtrack.mp3')
+    pygame.mixer.music.load(music_path)
+    print(f"Loaded music: {music_path}")
+    # Set initial volume (optional, 0.0 to 1.0)
+    pygame.mixer.music.set_volume(0.7)
+except pygame.error as e:
+    print(f"Error loading music '{music_path}': {e}")
+    # Handle music loading failure (e.g., disable music playback)
+# --- END ADDITION ---
 
 # --- Helper Functions ---
 def load_scaled_image(path, target_height=None, target_width=None, use_alpha=True):
@@ -604,6 +629,12 @@ def handle_main_menu(events):
             if buttons["start"].collidepoint(mouse_pos):
                 reset_game()
                 game_state = STATE_PLAYING
+                 # --- ADD MUSIC START ---
+                try:
+                    pygame.mixer.music.play(-1) # Play indefinitely (-1 loops)
+                except pygame.error as e:
+                    print(f"Error playing music: {e}")
+                # --- END MUSIC START ---
             elif buttons["instructions"].collidepoint(mouse_pos):
                 game_state = STATE_INSTRUCTIONS
             elif buttons["settings"].collidepoint(mouse_pos):
@@ -643,8 +674,15 @@ def handle_playing(events, dt):
         if event.type == KEYDOWN:
             if event.key == K_SPACE:
                 player.jump()
+                # ADD JUMP SOUND EFFECT LATER HERE?
             if event.key == K_ESCAPE:
                 game_state = STATE_PAUSED
+                # --- ADD MUSIC PAUSE ---
+                try:
+                    pygame.mixer.music.pause() # Pause music
+                except pygame.error as e:
+                    print(f"Error pausing music: {e}")
+                # --- END MUSIC PAUSE ---
 
     # --- Updates ---
     player.update(dt)
@@ -683,7 +721,15 @@ def handle_playing(events, dt):
              obstacles_group.add(obstacle)
 
              if player.health <= 0:
-                 game_state = STATE_GAME_OVER
+                game_state = STATE_GAME_OVER
+                # --- ADD MUSIC STOP ---
+                try:
+                    # pygame.mixer.music.stop() # Stop immediately
+                    pygame.mixer.music.fadeout(500) # Fade out over 500ms
+                except pygame.error as e:
+                    print(f"Error stopping/fading music: {e}")
+                 # --- END MUSIC STOP ---
+                 
 
 
     # --- Drawing ---
@@ -703,13 +749,37 @@ def handle_pause(events):
     for event in events:
         if event.type == KEYDOWN and event.key == K_ESCAPE:
             game_state = STATE_PLAYING # Resume on ESC
+            # --- ADD MUSIC UNPAUSE ---
+            try:
+                pygame.mixer.music.unpause() # Unpause music
+            except pygame.error as e:
+                print(f"Error unpausing music: {e}")
+            # --- END MUSIC UNPAUSE ---
         elif event.type == MOUSEBUTTONDOWN and event.button == 1:
             mouse_pos = event.pos
             if buttons["resume"].collidepoint(mouse_pos):
                 game_state = STATE_PLAYING
+                # --- ADD MUSIC UNPAUSE ---
+                try:
+                    pygame.mixer.music.unpause() # Unpause music
+                except pygame.error as e:
+                    print(f"Error unpausing music: {e}")
+                # --- END MUSIC UNPAUSE ---
             elif buttons["menu"].collidepoint(mouse_pos):
                 game_state = STATE_MAIN_MENU
+                # --- ADD MUSIC STOP ---
+                try:
+                    pygame.mixer.music.stop() # Stop immediately when going to menu
+                except pygame.error as e:
+                    print(f"Error stopping music: {e}")
+                 # --- END MUSIC STOP ---
             elif buttons["quit"].collidepoint(mouse_pos):
+                # --- ADD MUSIC STOP ---
+                try:
+                    pygame.mixer.music.stop() # Stop music before quitting
+                except pygame.error as e:
+                    print(f"Error stopping music: {e}")
+                 # --- END MUSIC STOP ---
                 quit_game = True
 
 
@@ -726,8 +796,16 @@ def handle_game_over(events):
             if buttons["retry"].collidepoint(mouse_pos):
                 reset_game()
                 game_state = STATE_PLAYING
+                # --- ADD MUSIC START ---
+                try:
+                    pygame.mixer.music.play(-1) # Play indefinitely
+                except pygame.error as e:
+                    print(f"Error playing music: {e}")
+                # --- END MUSIC START ---
             elif buttons["menu"].collidepoint(mouse_pos):
                 game_state = STATE_MAIN_MENU
+                # Music should already be stopped from handle_playing transition
+
 
 
 # --- Main Game Loop ---
@@ -764,5 +842,8 @@ while not quit_game:
 
 
 # --- Cleanup ---
+try:
+    pygame.mixer.music.stop()
+except pygame.error: pass # Ignore if mixer wasn't initialized or other errors
 pygame.quit()
 sys.exit()
