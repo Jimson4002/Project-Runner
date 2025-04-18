@@ -48,6 +48,10 @@ HEALTH_POS_TOP_MARGIN = 10
 HEALTH_HEART_SPACING = 5
 HEART_ANIMATION_SPEED = 0.1
 
+BOX_PADDING_X = 30 # Horizontal padding inside the box
+BOX_PADDING_Y = 20 # Vertical padding inside the box
+BUTTON_SPACING_Y = 10 # Vertical space between buttons
+
 # Font Sizes
 MENU_FONT_SIZE = 40
 BUTTON_FONT_SIZE = 30
@@ -426,25 +430,54 @@ def draw_main_menu(surface):
 
 
 def draw_pause_menu(surface):
-    """Draws the pause menu overlay and buttons."""
-    overlay = pygame.Surface(SIZE, pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 150)) # Black with alpha transparency
-    surface.blit(overlay, (0, 0))
+    """Draws the pause menu with a dynamically sized background box."""
+    draw_menu_background(surface) # Draw the main background first
 
-    draw_text('Paused', menu_font, WHITE, surface, GAME_WIDTH / 2, GAME_HEIGHT / 4)
+    # --- Dynamic Box Calculation ---
+    title_text = 'Paused'
+    button_texts_list = ["Resume", "Main Menu", "Quit"]
+    button_height = 50 # Assuming standard button height
+    num_buttons = len(button_texts_list)
 
-    button_rects = {
-        "resume": pygame.Rect(GAME_WIDTH / 2 - 100, GAME_HEIGHT / 2 - 30, 200, 50),
-        "menu": pygame.Rect(GAME_WIDTH / 2 - 100, GAME_HEIGHT / 2 + 30, 200, 50),
-        "quit": pygame.Rect(GAME_WIDTH / 2 - 100, GAME_HEIGHT / 2 + 90, 200, 50)
-    }
-    button_texts = {"resume": "Resume", "menu": "Main Menu", "quit": "Quit"}
+    # Calculate content height
+    title_height = menu_font.get_height()
+    buttons_total_height = num_buttons * button_height + (num_buttons - 1) * BUTTON_SPACING_Y
+    content_height = title_height + buttons_total_height + BOX_PADDING_Y * 3 # Padding: top, between title/buttons, bottom
 
-    for name, rect in button_rects.items():
+    # Calculate box dimensions (width can still be fixed or dynamic)
+    box_width = GAME_WIDTH * 0.6 # Keep width fixed for now
+    box_height = content_height
+    box_x = (GAME_WIDTH - box_width) / 2
+    box_y = (GAME_HEIGHT - box_height) / 2 # Center vertically
+
+    # Create and draw the box
+    menu_box = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
+    menu_box.fill((0, 0, 0, 130)) # Slightly adjusted alpha perhaps
+    surface.blit(menu_box, (box_x, box_y))
+    # --- End Dynamic Calculation ---
+
+    # Position title and buttons relative to the box top/center
+    title_y = box_y + BOX_PADDING_Y
+    draw_text(title_text, menu_font, WHITE, surface, GAME_WIDTH / 2, title_y + title_height / 2) # Center text vertically
+
+    # Define button rects based on calculated positions
+    button_rects = {}
+    current_button_y = title_y + title_height + BOX_PADDING_Y # Start buttons below title + padding
+    button_x = GAME_WIDTH / 2 - 100 # Keep buttons centered horizontally
+
+    # Create mapping for keys used in the main loop logic
+    button_keys = ["resume", "menu", "quit"]
+
+    for i, text in enumerate(button_texts_list):
+        key = button_keys[i]
+        rect = pygame.Rect(button_x, current_button_y, 200, button_height)
+        button_rects[key] = rect
         pygame.draw.rect(surface, LIGHT_GRAY, rect)
-        draw_text(button_texts[name], button_font, BLACK, surface, rect.centerx, rect.centery)
+        draw_text(text, button_font, BLACK, surface, rect.centerx, rect.centery)
+        current_button_y += button_height + BUTTON_SPACING_Y # Move down for next button
 
-    return button_rects
+    return button_rects # Return the dict expected by the main loop
+
 
 def draw_instructions_screen(surface):
     """Draws the instructions screen."""
@@ -485,25 +518,58 @@ def draw_settings_screen(surface):
     return {"back": button_back} # Return as dict
 
 def draw_game_over_screen(surface, current_score):
-    """Draws the game over screen."""
-    overlay = pygame.Surface(SIZE, pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 180)) # Darker overlay
-    surface.blit(overlay, (0, 0))
+    """Draws the game over screen with a dynamically sized background box."""
+    draw_menu_background(surface) # Draw the main background first
 
-    draw_text('Game Over!', menu_font, RED, surface, GAME_WIDTH / 2, GAME_HEIGHT / 4)
-    draw_text(f'Final Score: {current_score}', button_font, WHITE, surface, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 20)
+    # --- Dynamic Box Calculation ---
+    title_text = 'Game Over!'
+    score_text = f'Final Score: {current_score}'
+    button_texts_list = ["Retry", "Main Menu"]
+    button_height = 50
+    num_buttons = len(button_texts_list)
 
-    button_rects = {
-        "retry": pygame.Rect(GAME_WIDTH / 2 - 100, GAME_HEIGHT / 2 + 30, 200, 50),
-        "menu": pygame.Rect(GAME_WIDTH / 2 - 100, GAME_HEIGHT / 2 + 90, 200, 50)
-    }
-    button_texts = {"retry": "Retry", "menu": "Main Menu"}
+    # Calculate content height
+    title_height = menu_font.get_height()
+    score_text_height = button_font.get_height() # Use button font for score text height
+    buttons_total_height = num_buttons * button_height + (num_buttons - 1) * BUTTON_SPACING_Y
+    # Padding: top, between title/score, between score/buttons, bottom
+    content_height = title_height + score_text_height + buttons_total_height + BOX_PADDING_Y * 4
 
-    for name, rect in button_rects.items():
+    # Calculate box dimensions
+    box_width = GAME_WIDTH * 0.6
+    box_height = content_height
+    box_x = (GAME_WIDTH - box_width) / 2
+    box_y = (GAME_HEIGHT - box_height) / 2
+
+    # Create and draw the box
+    menu_box = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
+    menu_box.fill((0, 0, 0, 160)) # Make game over box slightly more opaque
+    surface.blit(menu_box, (box_x, box_y))
+    # --- End Dynamic Calculation ---
+
+    # Position title, score, and buttons relative to the box top/center
+    title_y = box_y + BOX_PADDING_Y
+    draw_text(title_text, menu_font, RED, surface, GAME_WIDTH / 2, title_y + title_height / 2)
+
+    score_text_y = title_y + title_height + BOX_PADDING_Y
+    draw_text(score_text, button_font, WHITE, surface, GAME_WIDTH / 2, score_text_y + score_text_height / 2)
+
+    # Define button rects
+    button_rects = {}
+    current_button_y = score_text_y + score_text_height + BOX_PADDING_Y # Start buttons below score text + padding
+    button_x = GAME_WIDTH / 2 - 100
+
+    button_keys = ["retry", "menu"]
+
+    for i, text in enumerate(button_texts_list):
+        key = button_keys[i]
+        rect = pygame.Rect(button_x, current_button_y, 200, button_height)
+        button_rects[key] = rect
         pygame.draw.rect(surface, LIGHT_GRAY, rect)
-        draw_text(button_texts[name], button_font, BLACK, surface, rect.centerx, rect.centery)
+        draw_text(text, button_font, BLACK, surface, rect.centerx, rect.centery)
+        current_button_y += button_height + BUTTON_SPACING_Y
 
-    return button_rects
+    return button_rects # Return the dict
 
 def draw_hud(surface, current_score, current_health):
     """Draws the Heads Up Display (Score and Health)."""
